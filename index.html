@@ -1,0 +1,152 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTA Ultimate World</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;font-family:Arial;background:#87ceeb}
+#hud{position:fixed;top:12px;left:12px;color:white;background:#111c;padding:12px;border-radius:10px;z-index:2}
+#help{position:fixed;bottom:12px;left:12px;color:white;background:#111c;padding:10px;border-radius:8px;z-index:2}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<div id="hud"><b>GTA ULTIMATE WORLD</b><br>City: Open World<br>Mode: Walking</div>
+<div id="help">W A S D = Move | SHIFT = Run</div>
+
+<script type="module">
+import * as THREE from "three";
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb);
+scene.fog=new THREE.Fog(0x87ceeb,80,350);
+
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,1000);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x557755,2));
+const sun=new THREE.DirectionalLight(0xffffff,2);
+sun.position.set(60,100,50);
+sun.castShadow=true;
+scene.add(sun);
+
+const ground=new THREE.Mesh(
+new THREE.PlaneGeometry(500,500),
+new THREE.MeshStandardMaterial({color:0x47834a}));
+ground.rotation.x=-Math.PI/2;
+ground.receiveShadow=true;
+scene.add(ground);
+
+// Roads
+function makeRoad(x,z,w,d){
+const r=new THREE.Mesh(new THREE.PlaneGeometry(w,d),
+new THREE.MeshStandardMaterial({color:0x30343a}));
+r.rotation.x=-Math.PI/2;
+r.position.set(x,.03,z);
+scene.add(r);
+}
+makeRoad(0,0,500,20);
+makeRoad(0,0,20,500);
+
+// Road markings
+for(let i=-240;i<250;i+=12){
+const line=new THREE.Mesh(new THREE.BoxGeometry(5,.04,.3),
+new THREE.MeshBasicMaterial({color:0xffffff}));
+line.position.set(i,.07,0);
+scene.add(line);
+}
+
+// Buildings
+for(let x=-180;x<=180;x+=30){
+for(let z=-180;z<=180;z+=30){
+if(Math.abs(x)<20||Math.abs(z)<20)continue;
+const h=12+Math.random()*35;
+const b=new THREE.Mesh(
+new THREE.BoxGeometry(17,h,17),
+new THREE.MeshStandardMaterial({
+color:new THREE.Color().setHSL(.55+Math.random()*.1,.15,.35+Math.random()*.25)
+}));
+b.position.set(x,h/2,z);
+b.castShadow=true;
+b.receiveShadow=true;
+scene.add(b);
+}
+}
+
+// Player
+const player=new THREE.Group();
+const body=new THREE.Mesh(
+new THREE.BoxGeometry(1,1.5,.6),
+new THREE.MeshStandardMaterial({color:0x2255dd}));
+body.position.y=1.5;
+body.castShadow=true;
+player.add(body);
+
+const head=new THREE.Mesh(
+new THREE.SphereGeometry(.38,16,16),
+new THREE.MeshStandardMaterial({color:0xe5b58b}));
+head.position.y=2.55;
+player.add(head);
+scene.add(player);
+player.position.set(0,0,8);
+
+// Keyboard
+const keys={};
+addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+// Mobile buttons
+const pad=document.createElement("div");
+pad.style.cssText="position:fixed;bottom:25px;right:15px;display:grid;grid-template-columns:repeat(3,55px);gap:5px;z-index:3";
+pad.innerHTML='<span></span><button data-k="w">▲</button><span></span><button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button>';
+document.body.appendChild(pad);
+pad.querySelectorAll("button").forEach(btn=>{
+btn.style.cssText="height:55px;background:#222c;color:white;border:0;border-radius:12px;font-size:22px;touch-action:none";
+btn.onpointerdown=e=>{e.preventDefault();keys[btn.dataset.k]=true};
+["pointerup","pointercancel","pointerleave"].forEach(ev=>
+btn.addEventListener(ev,()=>keys[btn.dataset.k]=false));
+});
+
+function animate(){
+requestAnimationFrame(animate);
+const dt=Math.min(clock.getDelta(),.05);
+const speed=keys["shift"]?12:6;
+const move=new THREE.Vector3();
+
+if(keys.w||keys.arrowup)move.z-=1;
+if(keys.s||keys.arrowdown)move.z+=1;
+if(keys.a||keys.arrowleft)move.x-=1;
+if(keys.d||keys.arrowright)move.x+=1;
+
+if(move.length()>0){
+move.normalize();
+player.position.addScaledVector(move,speed*dt);
+player.rotation.y=Math.atan2(move.x,move.z);
+}
+
+const offset=new THREE.Vector3(0,5,9);
+offset.applyAxisAngle(new THREE.Vector3(0,1,0),player.rotation.y);
+camera.position.lerp(player.position.clone().add(offset),.12);
+camera.lookAt(player.position.x,player.position.y+1.5,player.position.z);
+renderer.render(scene,camera);
+}
+const clock=new THREE.Clock();
+animate();
+
+addEventListener("resize",()=>{
+camera.aspect=innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
